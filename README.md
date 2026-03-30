@@ -14,8 +14,9 @@ This repository now includes the foundation layer for the service:
 - Auth endpoints for tenant signup, login, refresh rotation, and logout
 - JWT-backed principal resolution and RBAC-protected example routes
 - Tenant CRUD and tenant-scoped user listing with isolation checks
+- Tenant-admin and system-admin user management with role changes and deactivation
 - Dockerfile, Docker Compose, and CI workflow
-- Integration tests for health, auth, RBAC, and tenant-isolation flows
+- Integration tests for health, auth, RBAC, tenancy, and user-management flows
 
 The detailed product specification and phased execution plan live in:
 
@@ -51,6 +52,9 @@ Key auth endpoints:
 - `GET /api/v1/tenants`
 - `POST /api/v1/tenants`
 - `PATCH /api/v1/tenants/{tenant_id}`
+- `POST /api/v1/tenants/{tenant_id}/users`
+- `PATCH /api/v1/tenants/{tenant_id}/users/{user_id}/role`
+- `DELETE /api/v1/tenants/{tenant_id}/users/{user_id}`
 
 ## Local Development
 
@@ -97,6 +101,5 @@ identity-access-service/
 
 ## Immediate Next Slices
 
-- Tenant-admin user management endpoints
 - Audit trail emission for sensitive actions
 - Broader test coverage for auth and tenancy boundaries
