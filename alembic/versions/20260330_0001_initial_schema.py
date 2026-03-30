@@ -21,6 +21,7 @@ audit_action_enum = sa.Enum(
     "ROLE_CHANGED",
     "TOKEN_REVOKED",
     "TENANT_CREATED",
+    "TENANT_UPDATED",
     name="audit_action_enum",
 )
 

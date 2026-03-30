@@ -105,6 +105,17 @@ class TenantService:
         if "is_active" in updates:
             tenant.is_active = updates["is_active"]
 
+        if updates:
+            record_audit_event(
+                self.db,
+                action=AuditAction.TENANT_UPDATED,
+                resource_type="tenant",
+                resource_id=str(tenant.id),
+                tenant_id=tenant.id,
+                actor_user_id=principal.user_id,
+                details=updates,
+            )
+
         self.db.commit()
         self.db.refresh(tenant)
         return TenantResponse.model_validate(tenant)

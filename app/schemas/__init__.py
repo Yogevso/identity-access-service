@@ -1,3 +1,9 @@
+from app.schemas.audit import (
+    AuditActorResponse,
+    AuditLogListResponse,
+    AuditLogResponse,
+    AuditTenantResponse,
+)
 from app.schemas.auth import (
     AuthTenantResponse,
     AuthTokensResponse,
@@ -29,6 +35,10 @@ __all__ = [
     "AuthTenantResponse",
     "AuthTokensResponse",
     "AuthUserResponse",
+    "AuditActorResponse",
+    "AuditLogListResponse",
+    "AuditLogResponse",
+    "AuditTenantResponse",
     "HealthComponent",
     "HealthResponse",
     "LoginRequest",
