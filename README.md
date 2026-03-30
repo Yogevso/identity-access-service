@@ -12,8 +12,9 @@ This repository now includes the foundation layer for the service:
 - Alembic migration scaffolding with an initial schema
 - `/api/v1/health` endpoint with database connectivity check
 - Auth endpoints for tenant signup, login, refresh rotation, and logout
+- JWT-backed principal resolution and RBAC-protected example routes
 - Dockerfile, Docker Compose, and CI workflow
-- Integration tests for health and auth session flows
+- Integration tests for health, auth, and RBAC flows
 
 The detailed product specification and phased execution plan live in:
 
@@ -40,6 +41,9 @@ Key auth endpoints:
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/refresh`
 - `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/me`
+- `GET /api/v1/admin/tenant/summary`
+- `GET /api/v1/admin/system/summary`
 
 ## Local Development
 
@@ -86,7 +90,6 @@ identity-access-service/
 
 ## Immediate Next Slices
 
-- RBAC enforcement dependencies and protected routes
 - Tenant-admin user management endpoints
 - Audit trail emission for sensitive actions
 - Broader test coverage for auth and tenancy boundaries
