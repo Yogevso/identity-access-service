@@ -13,8 +13,9 @@ This repository now includes the foundation layer for the service:
 - `/api/v1/health` endpoint with database connectivity check
 - Auth endpoints for tenant signup, login, refresh rotation, and logout
 - JWT-backed principal resolution and RBAC-protected example routes
+- Tenant CRUD and tenant-scoped user listing with isolation checks
 - Dockerfile, Docker Compose, and CI workflow
-- Integration tests for health, auth, and RBAC flows
+- Integration tests for health, auth, RBAC, and tenant-isolation flows
 
 The detailed product specification and phased execution plan live in:
 
@@ -44,6 +45,12 @@ Key auth endpoints:
 - `GET /api/v1/auth/me`
 - `GET /api/v1/admin/tenant/summary`
 - `GET /api/v1/admin/system/summary`
+- `GET /api/v1/tenants/me`
+- `GET /api/v1/tenants/{tenant_id}`
+- `GET /api/v1/tenants/{tenant_id}/users`
+- `GET /api/v1/tenants`
+- `POST /api/v1/tenants`
+- `PATCH /api/v1/tenants/{tenant_id}`
 
 ## Local Development
 
