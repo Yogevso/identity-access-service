@@ -12,23 +12,40 @@ STATUS_CODE_MAP = {
     status.HTTP_403_FORBIDDEN: "forbidden",
     status.HTTP_404_NOT_FOUND: "not_found",
     status.HTTP_409_CONFLICT: "conflict",
+    status.HTTP_429_TOO_MANY_REQUESTS: "rate_limited",
     status.HTTP_422_UNPROCESSABLE_CONTENT: "validation_error",
     status.HTTP_500_INTERNAL_SERVER_ERROR: "internal_error",
 }
 
 
+def build_error_response(
+    *,
+    status_code: int,
+    message: str,
+    code: str | None = None,
+    details: list[ValidationErrorItem] | None = None,
+    headers: dict[str, str] | None = None,
+) -> JSONResponse:
+    body = ErrorResponse(
+        error=ErrorBody(
+            code=code or STATUS_CODE_MAP.get(status_code, "http_error"),
+            message=message,
+            details=details,
+        )
+    )
+    return JSONResponse(
+        status_code=status_code,
+        content=body.model_dump(mode="json"),
+        headers=headers,
+    )
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(HTTPException)
     async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
-        body = ErrorResponse(
-            error=ErrorBody(
-                code=STATUS_CODE_MAP.get(exc.status_code, "http_error"),
-                message=_stringify_detail(exc.detail),
-            )
-        )
-        return JSONResponse(
+        return build_error_response(
             status_code=exc.status_code,
-            content=body.model_dump(mode="json"),
+            message=_stringify_detail(exc.detail),
             headers=exc.headers,
         )
 
@@ -37,24 +54,19 @@ def register_exception_handlers(app: FastAPI) -> None:
         _: Request,
         exc: RequestValidationError,
     ) -> JSONResponse:
-        body = ErrorResponse(
-            error=ErrorBody(
-                code="validation_error",
-                message="Request validation failed.",
-                details=[
-                    ValidationErrorItem(
-                        field=".".join(str(part) for part in error["loc"]),
-                        message=error["msg"],
-                        type=error["type"],
-                        input=error.get("input"),
-                    )
-                    for error in exc.errors()
-                ],
-            )
-        )
-        return JSONResponse(
+        return build_error_response(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            content=body.model_dump(mode="json"),
+            code="validation_error",
+            message="Request validation failed.",
+            details=[
+                ValidationErrorItem(
+                    field=".".join(str(part) for part in error["loc"]),
+                    message=error["msg"],
+                    type=error["type"],
+                    input=error.get("input"),
+                )
+                for error in exc.errors()
+            ],
         )
 
 

@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     refresh_token_ttl_days: int = Field(default=7, alias="REFRESH_TOKEN_TTL_DAYS")
     max_failed_login_attempts: int = Field(default=5, alias="MAX_FAILED_LOGIN_ATTEMPTS", ge=1)
     login_lockout_minutes: int = Field(default=15, alias="LOGIN_LOCKOUT_MINUTES", ge=1)
+    rate_limit_window_seconds: int = Field(default=60, alias="RATE_LIMIT_WINDOW_SECONDS", ge=1)
+    login_rate_limit_requests: int = Field(default=10, alias="LOGIN_RATE_LIMIT_REQUESTS", ge=0)
+    register_rate_limit_requests: int = Field(
+        default=5,
+        alias="REGISTER_RATE_LIMIT_REQUESTS",
+        ge=0,
+    )
+    refresh_rate_limit_requests: int = Field(default=20, alias="REFRESH_RATE_LIMIT_REQUESTS", ge=0)
 
     @property
     def cors_origins(self) -> list[str]:
