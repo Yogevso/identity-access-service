@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
@@ -46,6 +46,8 @@ class AuthResult:
 
 
 class AuthService:
+    INVALID_LOGIN_MESSAGE = "Invalid tenant, email, or password."
+
     def __init__(self, db: Session, settings: Settings):
         self.db = db
         self.settings = settings
@@ -114,31 +116,63 @@ class AuthService:
                 tenant_id=tenant.id if tenant is not None else None,
                 email=str(payload.email),
                 tenant_slug=payload.tenant_slug,
+                details={"reason": "tenant_unavailable"},
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
-            raise InvalidCredentialsError("Invalid tenant, email, or password.")
+            raise InvalidCredentialsError(self.INVALID_LOGIN_MESSAGE)
 
         user = self.db.scalar(
             select(User)
             .options(joinedload(User.tenant))
             .where(User.tenant_id == tenant.id, User.email == str(payload.email))
         )
-        if (
-            user is None
-            or not user.is_active
-            or not verify_password(payload.password, user.password_hash)
-        ):
+        if user is None or not user.is_active:
             self._record_login_failure(
                 tenant_id=tenant.id,
                 email=str(payload.email),
                 tenant_slug=tenant.slug,
                 actor_user_id=user.id if user is not None else None,
+                details={"reason": "invalid_credentials"},
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
-            raise InvalidCredentialsError("Invalid tenant, email, or password.")
+            raise InvalidCredentialsError(self.INVALID_LOGIN_MESSAGE)
 
+        if self._is_user_locked(user):
+            self._record_login_failure(
+                tenant_id=tenant.id,
+                email=str(payload.email),
+                tenant_slug=tenant.slug,
+                actor_user_id=user.id,
+                details={
+                    "reason": "account_locked",
+                    "failed_login_attempts": user.failed_login_attempts,
+                    "locked_until": self._serialize_datetime(user.locked_until),
+                },
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            raise InvalidCredentialsError(self.INVALID_LOGIN_MESSAGE)
+
+        if not verify_password(payload.password, user.password_hash):
+            self._register_failed_login_attempt(user)
+            self._record_login_failure(
+                tenant_id=tenant.id,
+                email=str(payload.email),
+                tenant_slug=tenant.slug,
+                actor_user_id=user.id,
+                details={
+                    "reason": "invalid_credentials",
+                    "failed_login_attempts": user.failed_login_attempts,
+                    "locked_until": self._serialize_datetime(user.locked_until),
+                },
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            raise InvalidCredentialsError(self.INVALID_LOGIN_MESSAGE)
+
+        self._reset_failed_login_attempts(user)
         user.last_login_at = datetime.now(UTC)
         auth_result = self._issue_tokens_for_user(user)
         record_audit_event(
@@ -274,6 +308,7 @@ class AuthService:
         tenant_slug: str,
         tenant_id: uuid.UUID | None = None,
         actor_user_id: uuid.UUID | None = None,
+        details: dict[str, object] | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> None:
@@ -284,11 +319,48 @@ class AuthService:
             resource_id="login",
             tenant_id=tenant_id,
             actor_user_id=actor_user_id,
-            details={"email": email, "tenant_slug": tenant_slug},
+            details={"email": email, "tenant_slug": tenant_slug, **(details or {})},
             ip_address=ip_address,
             user_agent=user_agent,
         )
         self.db.commit()
+
+    def _register_failed_login_attempt(self, user: User) -> None:
+        user.failed_login_attempts += 1
+        if user.failed_login_attempts >= self.settings.max_failed_login_attempts:
+            user.locked_until = datetime.now(UTC) + timedelta(
+                minutes=self.settings.login_lockout_minutes
+            )
+
+    def _reset_failed_login_attempts(self, user: User) -> None:
+        user.failed_login_attempts = 0
+        user.locked_until = None
+
+    def _is_user_locked(self, user: User) -> bool:
+        if user.locked_until is None:
+            return False
+
+        locked_until = user.locked_until
+        if locked_until.tzinfo is None:
+            locked_until = locked_until.replace(tzinfo=UTC)
+
+        if locked_until <= datetime.now(UTC):
+            self._reset_failed_login_attempts(user)
+            return False
+
+        user.locked_until = locked_until
+        return True
+
+    @staticmethod
+    def _serialize_datetime(value: datetime | None) -> str | None:
+        if value is None:
+            return None
+
+        normalized_value = value
+        if normalized_value.tzinfo is None:
+            normalized_value = normalized_value.replace(tzinfo=UTC)
+
+        return normalized_value.isoformat()
 
     @staticmethod
     def _is_expired(expires_at: datetime) -> bool:

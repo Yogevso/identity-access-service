@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     jwt_issuer: str = Field(default="identity-access-service", alias="JWT_ISSUER")
     access_token_ttl_minutes: int = Field(default=15, alias="ACCESS_TOKEN_TTL_MINUTES")
     refresh_token_ttl_days: int = Field(default=7, alias="REFRESH_TOKEN_TTL_DAYS")
+    max_failed_login_attempts: int = Field(default=5, alias="MAX_FAILED_LOGIN_ATTEMPTS", ge=1)
+    login_lockout_minutes: int = Field(default=15, alias="LOGIN_LOCKOUT_MINUTES", ge=1)
 
     @property
     def cors_origins(self) -> list[str]:
