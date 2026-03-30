@@ -13,13 +13,15 @@ This repository now includes the foundation layer for the service:
 - `/api/v1/health` endpoint with database connectivity check
 - Auth endpoints for tenant signup, login, refresh rotation, and logout
 - Login-attempt protection with temporary account lockout for repeated failures
+- Request-level rate limiting on auth login, register, and refresh endpoints
 - JWT-backed principal resolution and RBAC-protected example routes
 - Tenant CRUD and tenant-scoped user listing with isolation checks
 - Tenant-admin and system-admin user management with role changes and deactivation
 - Queryable audit log APIs for tenant and system administrators
+- Bootstrap command for idempotent system-admin provisioning and recovery
 - Consistent JSON error envelope for validation, auth, permission, conflict, and not-found cases
 - Dockerfile, Docker Compose, and CI workflow
-- Integration tests for health, auth, RBAC, tenancy, user-management, and audit flows
+- Integration and service tests for health, auth, RBAC, rate limits, bootstrap, tenancy, user-management, and audit flows
 
 The detailed product specification and phased execution plan live in:
 
@@ -105,11 +107,46 @@ Validation failures use `code: "validation_error"` and populate `details` with f
 - Access tokens are short-lived JWTs; refresh tokens are opaque, hashed at rest, rotated on refresh, and revocable on logout or user deactivation.
 - Repeated failed login attempts against a valid active account trigger a temporary account lockout.
 - The login endpoint keeps returning the same `401` error for invalid credentials, inactive accounts, and active lockouts to reduce account-enumeration leakage.
+- Auth entrypoints return `429` with `Retry-After`, `X-RateLimit-Limit`, and `X-RateLimit-Remaining` headers when request limits are exceeded.
 
 Relevant settings in `.env`:
 
 - `MAX_FAILED_LOGIN_ATTEMPTS`
 - `LOGIN_LOCKOUT_MINUTES`
+- `RATE_LIMIT_WINDOW_SECONDS`
+- `LOGIN_RATE_LIMIT_REQUESTS`
+- `REGISTER_RATE_LIMIT_REQUESTS`
+- `REFRESH_RATE_LIMIT_REQUESTS`
+
+The current rate limiter is in-memory and process-local. That is appropriate for local development and a single app instance, but production deployment behind multiple app replicas should move the counters to a shared backend such as Redis.
+
+## Bootstrap Admin
+
+Create or recover the initial system administrator locally:
+
+```bash
+iam-bootstrap-admin \
+  --tenant-name "Platform" \
+  --tenant-slug platform \
+  --full-name "System Admin" \
+  --email admin@platform.example
+```
+
+Run the same workflow in Docker:
+
+```bash
+docker compose run --rm api iam-bootstrap-admin \
+  --tenant-name "Platform" \
+  --tenant-slug platform \
+  --full-name "System Admin" \
+  --email admin@platform.example
+```
+
+Notes:
+
+- The command is idempotent for an existing `SYS_ADMIN` in the target tenant.
+- It reactivates an existing system admin, clears temporary login lockouts, and can rotate the password with `--reset-password`.
+- It fails if the target email already exists in the tenant with a non-`SYS_ADMIN` role.
 
 ## Project Layout
 
@@ -134,6 +171,6 @@ identity-access-service/
 
 ## Immediate Next Slices
 
-- Broader test coverage for auth and tenancy boundaries
-- Seed/bootstrap workflow for local admin setup
-- Optional request-level rate limiting or abuse controls
+- Shared-state rate limiting for multi-instance deployments
+- Structured observability such as request IDs, metrics, and audit export
+- Deployment polish: production compose profile, backups, and operational runbooks
