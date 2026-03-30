@@ -14,7 +14,6 @@ from app.schemas.tenants import (
     TenantCreateRequest,
     TenantResponse,
     TenantUpdateRequest,
-    TenantUserSummaryResponse,
 )
 from app.services.tenants import (
     TenantAccessDeniedError,
@@ -95,17 +94,3 @@ def update_tenant(
     except TenantAccessDeniedError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
-
-@router.get("/{tenant_id}/users", response_model=list[TenantUserSummaryResponse])
-def list_tenant_users(
-    tenant_id: uuid.UUID,
-    principal: PrincipalDep,
-    db: DbSessionDep,
-) -> list[TenantUserSummaryResponse]:
-    service = TenantService(db)
-    try:
-        return service.list_tenant_users(principal=principal, tenant_id=tenant_id)
-    except TenantNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except TenantAccessDeniedError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
