@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 from app.models.enums import Role
 from app.models.user import User
+from tests.helpers import assert_api_error
 
 
 def auth_headers(access_token: str) -> dict[str, str]:
@@ -13,9 +14,11 @@ def auth_headers(access_token: str) -> dict[str, str]:
 def test_auth_me_requires_bearer_token(client) -> None:
     response = client.get("/api/v1/auth/me")
 
-    assert response.status_code == 401
-    assert response.json()["detail"] == (
-        "Authentication credentials were not provided or are invalid."
+    assert_api_error(
+        response,
+        status_code=401,
+        code="unauthorized",
+        message="Authentication credentials were not provided or are invalid.",
     )
     assert response.headers["www-authenticate"] == "Bearer"
 
@@ -53,8 +56,12 @@ def test_user_cannot_access_tenant_admin_summary(client, identity_factory) -> No
         headers=auth_headers(identity.access_token),
     )
 
-    assert response.status_code == 403
-    assert response.json()["detail"] == "You do not have permission to perform this action."
+    assert_api_error(
+        response,
+        status_code=403,
+        code="forbidden",
+        message="You do not have permission to perform this action.",
+    )
 
 
 def test_tenant_admin_cannot_access_system_admin_summary(client, identity_factory) -> None:
@@ -65,8 +72,12 @@ def test_tenant_admin_cannot_access_system_admin_summary(client, identity_factor
         headers=auth_headers(identity.access_token),
     )
 
-    assert response.status_code == 403
-    assert response.json()["detail"] == "You do not have permission to perform this action."
+    assert_api_error(
+        response,
+        status_code=403,
+        code="forbidden",
+        message="You do not have permission to perform this action.",
+    )
 
 
 def test_tenant_admin_summary_is_scoped_to_current_tenant(client, identity_factory) -> None:
@@ -139,7 +150,9 @@ def test_old_access_token_is_rejected_after_role_change(
         headers=auth_headers(identity.access_token),
     )
 
-    assert response.status_code == 401
-    assert response.json()["detail"] == (
-        "Authentication credentials were not provided or are invalid."
+    assert_api_error(
+        response,
+        status_code=401,
+        code="unauthorized",
+        message="Authentication credentials were not provided or are invalid.",
     )

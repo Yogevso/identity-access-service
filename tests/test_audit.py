@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.models.enums import Role
+from tests.helpers import assert_api_error
 
 
 def auth_headers(access_token: str) -> dict[str, str]:
@@ -132,8 +133,12 @@ def test_tenant_admin_can_list_own_tenant_audit_logs_only(client, identity_facto
     assert own_payload["items"][0]["tenant"]["slug"] == "acme"
     assert own_payload["items"][0]["actor"]["email"] == "admin@acme.io"
 
-    assert cross_tenant_response.status_code == 404
-    assert cross_tenant_response.json()["detail"] == "Tenant not found."
+    assert_api_error(
+        cross_tenant_response,
+        status_code=404,
+        code="not_found",
+        message="Tenant not found.",
+    )
 
 
 def test_standard_user_cannot_list_same_tenant_audit_logs(client, identity_factory) -> None:
@@ -149,5 +154,9 @@ def test_standard_user_cannot_list_same_tenant_audit_logs(client, identity_facto
         headers=auth_headers(user.access_token),
     )
 
-    assert response.status_code == 403
-    assert response.json()["detail"] == "You do not have permission to perform this action."
+    assert_api_error(
+        response,
+        status_code=403,
+        code="forbidden",
+        message="You do not have permission to perform this action.",
+    )

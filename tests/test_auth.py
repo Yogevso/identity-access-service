@@ -7,6 +7,7 @@ from app.models.enums import AuditAction
 from app.models.refresh_token import RefreshToken
 from app.models.tenant import Tenant
 from app.models.user import User
+from tests.helpers import assert_api_error
 
 
 def build_register_payload() -> dict[str, str]:
@@ -63,8 +64,12 @@ def test_register_rejects_duplicate_tenant_slug(client) -> None:
     second_response = client.post("/api/v1/auth/register", json=payload)
 
     assert first_response.status_code == 201
-    assert second_response.status_code == 409
-    assert second_response.json()["detail"] == "Tenant slug already exists."
+    assert_api_error(
+        second_response,
+        status_code=409,
+        code="conflict",
+        message="Tenant slug already exists.",
+    )
 
 
 def test_login_rejects_invalid_credentials(client) -> None:
@@ -79,8 +84,12 @@ def test_login_rejects_invalid_credentials(client) -> None:
         },
     )
 
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Invalid tenant, email, or password."
+    assert_api_error(
+        response,
+        status_code=401,
+        code="unauthorized",
+        message="Invalid tenant, email, or password.",
+    )
 
 
 def test_refresh_rotates_refresh_tokens(client) -> None:
@@ -102,8 +111,12 @@ def test_refresh_rotates_refresh_tokens(client) -> None:
         json={"refresh_token": original_refresh_token},
     )
 
-    assert replay_response.status_code == 401
-    assert replay_response.json()["detail"] == "Refresh token is invalid."
+    assert_api_error(
+        replay_response,
+        status_code=401,
+        code="unauthorized",
+        message="Refresh token is invalid.",
+    )
 
     refresh_tokens = db_rows(client, RefreshToken)
     assert len(refresh_tokens) == 2
@@ -124,5 +137,31 @@ def test_logout_revokes_refresh_token(client) -> None:
     )
 
     assert logout_response.status_code == 204
-    assert refresh_response.status_code == 401
-    assert refresh_response.json()["detail"] == "Refresh token is invalid."
+    assert_api_error(
+        refresh_response,
+        status_code=401,
+        code="unauthorized",
+        message="Refresh token is invalid.",
+    )
+
+
+def test_validation_errors_use_consistent_error_envelope(client) -> None:
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "tenant_name": "Acme Incorporated",
+            "tenant_slug": "acme-inc",
+            "full_name": "Alice Admin",
+            "email": "not-an-email",
+            "password": "short",
+        },
+    )
+
+    error = assert_api_error(
+        response,
+        status_code=422,
+        code="validation_error",
+        message="Request validation failed.",
+    )
+    assert error["details"] is not None
+    assert {item["field"] for item in error["details"]} >= {"body.email", "body.password"}

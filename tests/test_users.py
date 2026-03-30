@@ -6,6 +6,7 @@ from app.models.audit_log import AuditLog
 from app.models.enums import AuditAction, Role
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
+from tests.helpers import assert_api_error
 
 
 def auth_headers(access_token: str) -> dict[str, str]:
@@ -96,9 +97,11 @@ def test_tenant_admin_cannot_assign_system_admin_role(client, identity_factory) 
         },
     )
 
-    assert response.status_code == 403
-    assert response.json()["detail"] == (
-        "You do not have permission to assign the system administrator role."
+    assert_api_error(
+        response,
+        status_code=403,
+        code="forbidden",
+        message="You do not have permission to assign the system administrator role.",
     )
 
 
@@ -144,8 +147,12 @@ def test_tenant_admin_cannot_change_cross_tenant_user_role(client, identity_fact
         json={"role": "TENANT_ADMIN"},
     )
 
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Tenant not found."
+    assert_api_error(
+        response,
+        status_code=404,
+        code="not_found",
+        message="Tenant not found.",
+    )
 
 
 def test_deactivating_user_revokes_refresh_tokens_and_blocks_reauthentication(
@@ -218,5 +225,9 @@ def test_tenant_admin_cannot_deactivate_own_account(client, identity_factory) ->
         headers=auth_headers(tenant_admin.access_token),
     )
 
-    assert response.status_code == 403
-    assert response.json()["detail"] == "You cannot deactivate your own account."
+    assert_api_error(
+        response,
+        status_code=403,
+        code="forbidden",
+        message="You cannot deactivate your own account.",
+    )

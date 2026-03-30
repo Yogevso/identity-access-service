@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 from app.models.audit_log import AuditLog
 from app.models.enums import AuditAction, Role
+from tests.helpers import assert_api_error
 
 
 def auth_headers(access_token: str) -> dict[str, str]:
@@ -90,8 +91,12 @@ def test_tenant_admin_can_only_list_users_in_own_tenant(client, identity_factory
     assert [user["role"] for user in own_payload] == ["TENANT_ADMIN", "USER"]
     assert all(user["is_active"] is True for user in own_payload)
 
-    assert cross_tenant_response.status_code == 404
-    assert cross_tenant_response.json()["detail"] == "Tenant not found."
+    assert_api_error(
+        cross_tenant_response,
+        status_code=404,
+        code="not_found",
+        message="Tenant not found.",
+    )
 
 
 def test_standard_user_cannot_list_same_tenant_users(client, identity_factory) -> None:
@@ -113,8 +118,12 @@ def test_standard_user_cannot_list_same_tenant_users(client, identity_factory) -
         headers=auth_headers(user.access_token),
     )
 
-    assert response.status_code == 403
-    assert response.json()["detail"] == "You do not have permission to perform this action."
+    assert_api_error(
+        response,
+        status_code=403,
+        code="forbidden",
+        message="You do not have permission to perform this action.",
+    )
 
 
 def test_sys_admin_can_update_any_tenant(client, identity_factory) -> None:
@@ -164,5 +173,9 @@ def test_tenant_admin_cannot_update_own_tenant(client, identity_factory) -> None
         json={"name": "Renamed Tenant"},
     )
 
-    assert response.status_code == 403
-    assert response.json()["detail"] == "You do not have permission to perform this action."
+    assert_api_error(
+        response,
+        status_code=403,
+        code="forbidden",
+        message="You do not have permission to perform this action.",
+    )
