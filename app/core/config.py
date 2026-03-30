@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     api_v1_prefix: str = Field(default="/api/v1", alias="API_V1_PREFIX")
     database_url: str = Field(default="sqlite+pysqlite:///./iam.db", alias="DATABASE_URL")
     cors_origins_raw: str = Field(default="", alias="CORS_ORIGINS")
+    jwt_secret_key: str = Field(default="dev-insecure-change-me", alias="JWT_SECRET_KEY")
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    jwt_issuer: str = Field(default="identity-access-service", alias="JWT_ISSUER")
+    access_token_ttl_minutes: int = Field(default=15, alias="ACCESS_TOKEN_TTL_MINUTES")
+    refresh_token_ttl_days: int = Field(default=7, alias="REFRESH_TOKEN_TTL_DAYS")
 
     @property
     def cors_origins(self) -> list[str]:

@@ -6,17 +6,22 @@ from fastapi import Request
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 
 def build_engine(database_url: str) -> Engine:
     connect_args: dict[str, object] = {}
+    engine_kwargs: dict[str, object] = {"pool_pre_ping": True}
+
     if database_url.startswith("sqlite"):
         connect_args["check_same_thread"] = False
+        if ":memory:" in database_url:
+            engine_kwargs["poolclass"] = StaticPool
 
     return create_engine(
         database_url,
         connect_args=connect_args,
-        pool_pre_ping=True,
+        **engine_kwargs,
     )
 
 
