@@ -8,12 +8,10 @@ from sqlalchemy.orm import Session
 from app.core.principal import CurrentPrincipal
 from app.models.enums import AuditAction, Role
 from app.models.tenant import Tenant
-from app.models.user import User
 from app.schemas.tenants import (
     TenantCreateRequest,
     TenantResponse,
     TenantUpdateRequest,
-    TenantUserSummaryResponse,
 )
 from app.services.audit import record_audit_event
 
@@ -39,7 +37,7 @@ class TenantService:
         return [TenantResponse.model_validate(tenant) for tenant in tenants]
 
     def get_current_tenant(self, principal: CurrentPrincipal) -> TenantResponse:
-        tenant = self._get_visible_tenant(
+        tenant = self.resolve_visible_tenant(
             principal=principal,
             tenant_id=principal.tenant_id,
             allowed_same_tenant_roles={Role.USER, Role.TENANT_ADMIN, Role.SYS_ADMIN},
@@ -47,7 +45,7 @@ class TenantService:
         return TenantResponse.model_validate(tenant)
 
     def get_tenant(self, *, principal: CurrentPrincipal, tenant_id: uuid.UUID) -> TenantResponse:
-        tenant = self._get_visible_tenant(
+        tenant = self.resolve_visible_tenant(
             principal=principal,
             tenant_id=tenant_id,
             allowed_same_tenant_roles={Role.USER, Role.TENANT_ADMIN, Role.SYS_ADMIN},
@@ -95,7 +93,7 @@ class TenantService:
         *,
         principal: CurrentPrincipal,
     ) -> TenantResponse:
-        tenant = self._get_visible_tenant(
+        tenant = self.resolve_visible_tenant(
             principal=principal,
             tenant_id=tenant_id,
             allowed_same_tenant_roles={Role.SYS_ADMIN},
@@ -111,25 +109,7 @@ class TenantService:
         self.db.refresh(tenant)
         return TenantResponse.model_validate(tenant)
 
-    def list_tenant_users(
-        self,
-        *,
-        principal: CurrentPrincipal,
-        tenant_id: uuid.UUID,
-    ) -> list[TenantUserSummaryResponse]:
-        tenant = self._get_visible_tenant(
-            principal=principal,
-            tenant_id=tenant_id,
-            allowed_same_tenant_roles={Role.TENANT_ADMIN, Role.SYS_ADMIN},
-        )
-        users = self.db.scalars(
-            select(User)
-            .where(User.tenant_id == tenant.id)
-            .order_by(User.email.asc())
-        ).all()
-        return [TenantUserSummaryResponse.model_validate(user) for user in users]
-
-    def _get_visible_tenant(
+    def resolve_visible_tenant(
         self,
         *,
         principal: CurrentPrincipal,

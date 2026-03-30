@@ -5,8 +5,6 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator
 
-from app.models.enums import Role
-
 TenantSlug = Annotated[
     str,
     StringConstraints(
@@ -52,14 +50,4 @@ class TenantResponse(BaseModel):
     id: uuid.UUID
     name: str
     slug: str
-    is_active: bool
-
-
-class TenantUserSummaryResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: uuid.UUID
-    email: str
-    full_name: str
-    role: Role
     is_active: bool

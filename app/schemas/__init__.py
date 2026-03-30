@@ -18,7 +18,11 @@ from app.schemas.tenants import (
     TenantCreateRequest,
     TenantResponse,
     TenantUpdateRequest,
-    TenantUserSummaryResponse,
+)
+from app.schemas.users import (
+    ManagedUserResponse,
+    UserCreateRequest,
+    UserRoleUpdateRequest,
 )
 
 __all__ = [
@@ -38,5 +42,7 @@ __all__ = [
     "TenantCreateRequest",
     "TenantResponse",
     "TenantUpdateRequest",
-    "TenantUserSummaryResponse",
+    "ManagedUserResponse",
+    "UserCreateRequest",
+    "UserRoleUpdateRequest",
 ]
