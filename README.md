@@ -11,8 +11,9 @@ This repository now includes the foundation layer for the service:
 - Core domain models for tenants, users, refresh tokens, and audit logs
 - Alembic migration scaffolding with an initial schema
 - `/api/v1/health` endpoint with database connectivity check
+- Auth endpoints for tenant signup, login, refresh rotation, and logout
 - Dockerfile, Docker Compose, and CI workflow
-- Baseline automated test for health/system readiness
+- Integration tests for health and auth session flows
 
 The detailed product specification and phased execution plan live in:
 
@@ -32,6 +33,13 @@ docker compose up --build
 
 - API docs: `http://localhost:8000/docs`
 - Health check: `http://localhost:8000/api/v1/health`
+
+Key auth endpoints:
+
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
 
 ## Local Development
 
@@ -78,7 +86,6 @@ identity-access-service/
 
 ## Immediate Next Slices
 
-- Auth flows: register, login, refresh, logout
 - RBAC enforcement dependencies and protected routes
 - Tenant-admin user management endpoints
 - Audit trail emission for sensitive actions
