@@ -12,6 +12,7 @@ This repository now includes the foundation layer for the service:
 - Alembic migration scaffolding with an initial schema
 - `/api/v1/health` endpoint with database connectivity check
 - Auth endpoints for tenant signup, login, refresh rotation, and logout
+- Login-attempt protection with temporary account lockout for repeated failures
 - JWT-backed principal resolution and RBAC-protected example routes
 - Tenant CRUD and tenant-scoped user listing with isolation checks
 - Tenant-admin and system-admin user management with role changes and deactivation
@@ -80,6 +81,7 @@ Run checks:
 ```bash
 ruff check .
 pytest
+alembic upgrade head
 ```
 
 ## Error Model
@@ -97,6 +99,17 @@ Non-success responses use a consistent envelope:
 ```
 
 Validation failures use `code: "validation_error"` and populate `details` with field-level items.
+
+## Auth Hardening
+
+- Access tokens are short-lived JWTs; refresh tokens are opaque, hashed at rest, rotated on refresh, and revocable on logout or user deactivation.
+- Repeated failed login attempts against a valid active account trigger a temporary account lockout.
+- The login endpoint keeps returning the same `401` error for invalid credentials, inactive accounts, and active lockouts to reduce account-enumeration leakage.
+
+Relevant settings in `.env`:
+
+- `MAX_FAILED_LOGIN_ATTEMPTS`
+- `LOGIN_LOCKOUT_MINUTES`
 
 ## Project Layout
 
@@ -122,5 +135,5 @@ identity-access-service/
 ## Immediate Next Slices
 
 - Broader test coverage for auth and tenancy boundaries
-- Optional rate limiting or login-attempt controls
 - Seed/bootstrap workflow for local admin setup
+- Optional request-level rate limiting or abuse controls
