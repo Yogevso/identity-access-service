@@ -14,6 +14,12 @@ from app.schemas.rbac import (
     SystemAdminSummaryResponse,
     TenantAdminSummaryResponse,
 )
+from app.schemas.tenants import (
+    TenantCreateRequest,
+    TenantResponse,
+    TenantUpdateRequest,
+    TenantUserSummaryResponse,
+)
 
 __all__ = [
     "AuthTenantResponse",
@@ -29,4 +35,8 @@ __all__ = [
     "RegisterRequest",
     "SystemAdminSummaryResponse",
     "TenantAdminSummaryResponse",
+    "TenantCreateRequest",
+    "TenantResponse",
+    "TenantUpdateRequest",
+    "TenantUserSummaryResponse",
 ]
