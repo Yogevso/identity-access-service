@@ -8,6 +8,12 @@ from app.schemas.auth import (
     RegisterRequest,
 )
 from app.schemas.health import HealthComponent, HealthResponse
+from app.schemas.rbac import (
+    PrincipalResponse,
+    PrincipalTenantResponse,
+    SystemAdminSummaryResponse,
+    TenantAdminSummaryResponse,
+)
 
 __all__ = [
     "AuthTenantResponse",
@@ -17,6 +23,10 @@ __all__ = [
     "HealthResponse",
     "LoginRequest",
     "LogoutRequest",
+    "PrincipalResponse",
+    "PrincipalTenantResponse",
     "RefreshTokenRequest",
     "RegisterRequest",
+    "SystemAdminSummaryResponse",
+    "TenantAdminSummaryResponse",
 ]
