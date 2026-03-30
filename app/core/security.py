@@ -11,6 +11,7 @@ import bcrypt
 import jwt
 
 from app.core.config import Settings
+from app.models.enums import Role
 from app.models.user import User
 
 
@@ -20,6 +21,18 @@ class RefreshTokenBundle:
     plain_token: str
     token_hash: str
     expires_at: datetime
+
+
+@dataclass(slots=True)
+class AccessTokenClaims:
+    user_id: uuid.UUID
+    tenant_id: uuid.UUID
+    role: Role
+    email: str
+
+
+class InvalidAccessTokenError(Exception):
+    """Raised when an access token is invalid or unusable."""
 
 
 def hash_password(password: str) -> str:
@@ -43,6 +56,32 @@ def create_access_token(*, user: User, settings: Settings) -> str:
         "iss": settings.jwt_issuer,
     }
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+
+
+def decode_access_token(token: str, *, settings: Settings) -> AccessTokenClaims:
+    try:
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret_key,
+            algorithms=[settings.jwt_algorithm],
+            issuer=settings.jwt_issuer,
+            options={"require": ["sub", "tenant_id", "role", "email", "type", "exp", "iss"]},
+        )
+    except jwt.PyJWTError as exc:
+        raise InvalidAccessTokenError("Access token is invalid.") from exc
+
+    if payload.get("type") != "access":
+        raise InvalidAccessTokenError("Access token is invalid.")
+
+    try:
+        return AccessTokenClaims(
+            user_id=uuid.UUID(str(payload["sub"])),
+            tenant_id=uuid.UUID(str(payload["tenant_id"])),
+            role=Role(str(payload["role"])),
+            email=str(payload["email"]),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise InvalidAccessTokenError("Access token is invalid.") from exc
 
 
 def create_refresh_token(*, settings: Settings) -> RefreshTokenBundle:
