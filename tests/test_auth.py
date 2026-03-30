@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy import select
 
 from app.models.audit_log import AuditLog
@@ -17,6 +19,14 @@ def build_register_payload() -> dict[str, str]:
         "full_name": "Alice Admin",
         "email": "admin@acmeapp.io",
         "password": "StrongPass123!",
+    }
+
+
+def build_login_payload(*, password: str = "StrongPass123!") -> dict[str, str]:
+    return {
+        "tenant_slug": "acme-inc",
+        "email": "admin@acmeapp.io",
+        "password": password,
     }
 
 
@@ -75,14 +85,7 @@ def test_register_rejects_duplicate_tenant_slug(client) -> None:
 def test_login_rejects_invalid_credentials(client) -> None:
     client.post("/api/v1/auth/register", json=build_register_payload())
 
-    response = client.post(
-        "/api/v1/auth/login",
-        json={
-            "tenant_slug": "acme-inc",
-            "email": "admin@acmeapp.io",
-            "password": "WrongPass123!",
-        },
-    )
+    response = client.post("/api/v1/auth/login", json=build_login_payload(password="WrongPass123!"))
 
     assert_api_error(
         response,
@@ -90,6 +93,97 @@ def test_login_rejects_invalid_credentials(client) -> None:
         code="unauthorized",
         message="Invalid tenant, email, or password.",
     )
+
+
+def test_login_locks_account_after_repeated_failures(client) -> None:
+    client.post("/api/v1/auth/register", json=build_register_payload())
+    max_failed_attempts = client.app.state.settings.max_failed_login_attempts
+
+    for _ in range(max_failed_attempts):
+        response = client.post(
+            "/api/v1/auth/login",
+            json=build_login_payload(password="WrongPass123!"),
+        )
+        assert_api_error(
+            response,
+            status_code=401,
+            code="unauthorized",
+            message="Invalid tenant, email, or password.",
+        )
+
+    locked_response = client.post("/api/v1/auth/login", json=build_login_payload())
+    assert_api_error(
+        locked_response,
+        status_code=401,
+        code="unauthorized",
+        message="Invalid tenant, email, or password.",
+    )
+
+    users = db_rows(client, User)
+    audit_logs = db_rows(client, AuditLog)
+    login_failures = [log for log in audit_logs if log.action == AuditAction.LOGIN_FAILURE]
+
+    assert users[0].failed_login_attempts == max_failed_attempts
+    assert users[0].locked_until is not None
+    assert len(login_failures) == max_failed_attempts + 1
+    assert login_failures[-1].details["reason"] == "account_locked"
+
+
+def test_successful_login_resets_failed_attempts(client) -> None:
+    client.post("/api/v1/auth/register", json=build_register_payload())
+
+    for _ in range(2):
+        response = client.post(
+            "/api/v1/auth/login",
+            json=build_login_payload(password="WrongPass123!"),
+        )
+        assert_api_error(
+            response,
+            status_code=401,
+            code="unauthorized",
+            message="Invalid tenant, email, or password.",
+        )
+
+    login_response = client.post("/api/v1/auth/login", json=build_login_payload())
+
+    assert login_response.status_code == 200
+
+    users = db_rows(client, User)
+    assert users[0].failed_login_attempts == 0
+    assert users[0].locked_until is None
+
+
+def test_login_succeeds_after_lockout_window_expires(client, db_session) -> None:
+    client.post("/api/v1/auth/register", json=build_register_payload())
+    max_failed_attempts = client.app.state.settings.max_failed_login_attempts
+
+    for _ in range(max_failed_attempts):
+        response = client.post(
+            "/api/v1/auth/login",
+            json=build_login_payload(password="WrongPass123!"),
+        )
+        assert_api_error(
+            response,
+            status_code=401,
+            code="unauthorized",
+            message="Invalid tenant, email, or password.",
+        )
+
+    user = db_session.scalar(select(User).where(User.email == "admin@acmeapp.io"))
+    assert user is not None
+
+    user.locked_until = datetime.now(UTC) - timedelta(minutes=1)
+    db_session.commit()
+
+    login_response = client.post("/api/v1/auth/login", json=build_login_payload())
+
+    assert login_response.status_code == 200
+
+    db_session.expire_all()
+    refreshed_user = db_session.scalar(select(User).where(User.email == "admin@acmeapp.io"))
+    assert refreshed_user is not None
+    assert refreshed_user.failed_login_attempts == 0
+    assert refreshed_user.locked_until is None
 
 
 def test_refresh_rotates_refresh_tokens(client) -> None:
