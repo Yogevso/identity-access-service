@@ -1,15 +1,42 @@
 # Identity Access Service
 
-Production-style Identity and Access Management (IAM) backend built with FastAPI, PostgreSQL, SQLAlchemy, Alembic, Docker Compose, and GitHub Actions.
+Production-style Identity and Access Management (IAM) service designed to simulate a real SaaS backend responsible for authentication, authorization, and tenant isolation.
+
+Built with FastAPI, PostgreSQL, SQLAlchemy, Alembic, Docker Compose, and GitHub Actions.
+
+This repository represents a completed milestone of the project: a secure, multi-tenant backend service that covers authentication, authorization, tenant isolation, auditability, operational hardening, and local deployment workflows.
+
+## Why This Project
+
+Identity and access control sit at the center of most modern SaaS systems. Authentication, authorization, tenant isolation, and auditability are not side concerns. They shape how a product enforces trust, protects customer data, and scales safely across organizations.
+
+This project exists to demonstrate that layer as a standalone backend service. It focuses on the kinds of concerns engineering teams deal with in real systems:
+
+- Secure token-based authentication
+- Role-based access control across multiple actor types
+- Strong tenant boundaries for SaaS-style data isolation
+- Auditable security-sensitive actions
+- Operational safeguards such as login protection, rate limiting, and bootstrap admin recovery
+
+For recruiters and reviewers, the value of this project is not only the API surface. It shows system design thinking, practical backend architecture, and security-aware implementation choices.
+
+## Key Capabilities
+
+- JWT-based authentication with refresh token rotation
+- Role-based access control with `SYS_ADMIN`, `TENANT_ADMIN`, and `USER`
+- Multi-tenant data isolation with tenant-aware service logic
+- Audit logging for security-sensitive actions
+- Login protection with lockout and request-level rate limiting
+- Dockerized local environment with CI-backed test coverage
 
 ## Current Scope
 
-This repository now includes the foundation layer for the service:
+This milestone includes:
 
 - FastAPI application factory with versioned routing
 - Database configuration and SQLAlchemy session management
 - Core domain models for tenants, users, refresh tokens, and audit logs
-- Alembic migration scaffolding with an initial schema
+- Alembic migration scaffolding and versioned schema changes
 - `/api/v1/health` endpoint with database connectivity check
 - Auth endpoints for tenant signup, login, refresh rotation, and logout
 - Login-attempt protection with temporary account lockout for repeated failures
@@ -19,7 +46,7 @@ This repository now includes the foundation layer for the service:
 - Tenant-admin and system-admin user management with role changes and deactivation
 - Queryable audit log APIs for tenant and system administrators
 - Bootstrap command for idempotent system-admin provisioning and recovery
-- Consistent JSON error envelope for validation, auth, permission, conflict, and not-found cases
+- Consistent JSON error envelope for validation, auth, permission, conflict, not-found, and rate-limit responses
 - Dockerfile, Docker Compose, and CI workflow
 - Integration and service tests for health, auth, RBAC, rate limits, bootstrap, tenancy, user-management, and audit flows
 
@@ -27,6 +54,34 @@ The detailed product specification and phased execution plan live in:
 
 - [docs/prd.md](docs/prd.md)
 - [docs/execution-plan.md](docs/execution-plan.md)
+
+## Architecture Overview
+
+Core components:
+
+- FastAPI provides the HTTP API layer, dependency injection, OpenAPI docs, and route organization.
+- PostgreSQL is the primary persistence target, with SQLAlchemy for ORM mapping and Alembic for schema migrations.
+- JWT access tokens are used for short-lived API authentication.
+- Opaque refresh tokens are stored hashed at rest and rotated on refresh.
+- Docker Compose provides local orchestration for the API and database.
+- GitHub Actions runs linting and tests in CI.
+
+Key design decisions:
+
+- Tenant isolation is enforced in the service layer, not only at the route layer, so cross-tenant access is denied by design.
+- Refresh tokens are never stored in plaintext, which reduces blast radius if database data is exposed.
+- Security-relevant actions are written to audit logs so admin activity and auth events remain traceable.
+- Error handling uses a consistent JSON envelope across validation, auth, permission, and conflict paths.
+- Login protection combines account lockout with request throttling to reduce brute-force and abuse risk.
+- Bootstrap admin creation is implemented as an explicit management command rather than hidden application startup behavior.
+
+## Example Flow: Login
+
+1. A user submits tenant slug, email, and password to `POST /api/v1/auth/login`.
+2. The service resolves the tenant, validates the user, checks lockout state, and verifies the password hash.
+3. On success, it issues a short-lived JWT access token and a rotated refresh token.
+4. The refresh token is stored hashed in the database, and the login event is written to the audit log.
+5. Future protected requests use the access token, and refresh requests rotate the refresh token again.
 
 ## Quick Start
 
@@ -157,6 +212,7 @@ identity-access-service/
 |   |-- api/
 |   |-- core/
 |   |-- db/
+|   |-- management/
 |   |-- models/
 |   |-- schemas/
 |   |-- services/
@@ -169,8 +225,10 @@ identity-access-service/
 `-- pyproject.toml
 ```
 
-## Immediate Next Slices
+## Next Engineering Steps
+
+The current milestone is stable and complete for its intended scope. The strongest next steps, if this project continues, are:
 
 - Shared-state rate limiting for multi-instance deployments
 - Structured observability such as request IDs, metrics, and audit export
-- Deployment polish: production compose profile, backups, and operational runbooks
+- Deployment polish including production profiles, backup workflows, and operational runbooks
