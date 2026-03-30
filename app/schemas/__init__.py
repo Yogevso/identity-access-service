@@ -13,6 +13,7 @@ from app.schemas.auth import (
     RefreshTokenRequest,
     RegisterRequest,
 )
+from app.schemas.errors import ErrorBody, ErrorResponse, ValidationErrorItem
 from app.schemas.health import HealthComponent, HealthResponse
 from app.schemas.rbac import (
     PrincipalResponse,
@@ -39,6 +40,8 @@ __all__ = [
     "AuditLogListResponse",
     "AuditLogResponse",
     "AuditTenantResponse",
+    "ErrorBody",
+    "ErrorResponse",
     "HealthComponent",
     "HealthResponse",
     "LoginRequest",
@@ -52,6 +55,7 @@ __all__ = [
     "TenantCreateRequest",
     "TenantResponse",
     "TenantUpdateRequest",
+    "ValidationErrorItem",
     "ManagedUserResponse",
     "UserCreateRequest",
     "UserRoleUpdateRequest",
