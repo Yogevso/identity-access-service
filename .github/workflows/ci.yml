@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: iam
+          POSTGRES_USER: iam
+          POSTGRES_PASSWORD: iam
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U iam -d iam"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DATABASE_URL: postgresql+psycopg://iam:iam@localhost:5432/iam
+      APP_ENV: ci
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .[dev]
+
+      - name: Run migrations
+        run: alembic upgrade head
+
+      - name: Lint
+        run: python -m ruff check .
+
+      - name: Test
+        run: python -m pytest
