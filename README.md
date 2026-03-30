@@ -16,6 +16,7 @@ This repository now includes the foundation layer for the service:
 - Tenant CRUD and tenant-scoped user listing with isolation checks
 - Tenant-admin and system-admin user management with role changes and deactivation
 - Queryable audit log APIs for tenant and system administrators
+- Consistent JSON error envelope for validation, auth, permission, conflict, and not-found cases
 - Dockerfile, Docker Compose, and CI workflow
 - Integration tests for health, auth, RBAC, tenancy, user-management, and audit flows
 
@@ -38,7 +39,7 @@ docker compose up --build
 - API docs: `http://localhost:8000/docs`
 - Health check: `http://localhost:8000/api/v1/health`
 
-Key auth endpoints:
+Key auth and admin endpoints:
 
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
@@ -81,27 +82,45 @@ ruff check .
 pytest
 ```
 
+## Error Model
+
+Non-success responses use a consistent envelope:
+
+```json
+{
+  "error": {
+    "code": "forbidden",
+    "message": "You do not have permission to perform this action.",
+    "details": null
+  }
+}
+```
+
+Validation failures use `code: "validation_error"` and populate `details` with field-level items.
+
 ## Project Layout
 
 ```text
 identity-access-service/
-├── alembic/
-├── app/
-│   ├── api/
-│   ├── core/
-│   ├── db/
-│   ├── models/
-│   ├── schemas/
-│   ├── services/
-│   └── main.py
-├── docs/
-├── tests/
-├── .github/workflows/
-├── docker-compose.yml
-├── Dockerfile
-└── pyproject.toml
+|-- alembic/
+|-- app/
+|   |-- api/
+|   |-- core/
+|   |-- db/
+|   |-- models/
+|   |-- schemas/
+|   |-- services/
+|   `-- main.py
+|-- docs/
+|-- tests/
+|-- .github/workflows/
+|-- docker-compose.yml
+|-- Dockerfile
+`-- pyproject.toml
 ```
 
 ## Immediate Next Slices
 
 - Broader test coverage for auth and tenancy boundaries
+- Optional rate limiting or login-attempt controls
+- Seed/bootstrap workflow for local admin setup
