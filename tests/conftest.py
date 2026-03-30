@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import Settings
+from app.db.base import Base
 from app.main import create_application
 
 
@@ -17,7 +18,12 @@ def client() -> Generator[TestClient, None, None]:
         APP_VERSION="0.1.0-test",
         API_V1_PREFIX="/api/v1",
         DATABASE_URL="sqlite+pysqlite:///:memory:",
+        JWT_SECRET_KEY="test-secret-key",
     )
+    app = create_application(settings)
+    Base.metadata.create_all(bind=app.state.engine)
 
-    with TestClient(create_application(settings)) as test_client:
+    with TestClient(app) as test_client:
         yield test_client
+
+    Base.metadata.drop_all(bind=app.state.engine)
