@@ -1,6 +1,6 @@
 # Identity Access Service
 
-**The shared auth layer of the [Orchestrix Platform](#platform-architecture).** Owns authentication, authorization, and tenant isolation. Emits JWTs with `sub`, `role`, `tenant_id` claims consumed by Engine, AI, and Console. Provides refresh token rotation, RBAC enforcement, and audit logging for all platform services.
+**The shared auth layer of the [Orchestrix Platform](https://github.com/Yogevso/Orchestrix-Platform).** Owns authentication, authorization, and tenant isolation. Emits JWTs with `sub`, `role`, `tenant_id` claims consumed by Engine, AI, and Console. Provides refresh token rotation, RBAC enforcement, and audit logging for all platform services.
 
 Production-style Identity and Access Management (IAM) service built with FastAPI, PostgreSQL, SQLAlchemy, Alembic, Docker Compose, and GitHub Actions. Covers authentication, authorization, tenant isolation, auditability, operational hardening, and local deployment workflows.
 
