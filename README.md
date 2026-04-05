@@ -1,10 +1,8 @@
 # Identity Access Service
 
-Production-style Identity and Access Management (IAM) service designed to simulate a real SaaS backend responsible for authentication, authorization, and tenant isolation.
+**The shared auth layer of the [Orchestrix Platform](#platform-architecture).** Owns authentication, authorization, and tenant isolation. Emits JWTs with `sub`, `role`, `tenant_id` claims consumed by Engine, AI, and Console. Provides refresh token rotation, RBAC enforcement, and audit logging for all platform services.
 
-Built with FastAPI, PostgreSQL, SQLAlchemy, Alembic, Docker Compose, and GitHub Actions.
-
-This repository represents a completed milestone of the project: a secure, multi-tenant backend service that covers authentication, authorization, tenant isolation, auditability, operational hardening, and local deployment workflows.
+Production-style Identity and Access Management (IAM) service built with FastAPI, PostgreSQL, SQLAlchemy, Alembic, Docker Compose, and GitHub Actions. Covers authentication, authorization, tenant isolation, auditability, operational hardening, and local deployment workflows.
 
 ## Part of the Orchestrix Platform
 
@@ -22,6 +20,29 @@ Identity Access Service is the **shared authentication and authorization layer**
 - Refresh token rotation for session continuity
 - User profile and tenant context via `GET /api/v1/auth/me`
 - Audit logs for all auth and admin events
+
+### Platform Architecture
+
+```mermaid
+flowchart TB
+    Console["Orchestrix Console\n:5173 — Operator UI"]
+    Engine["Orchestrix Engine\n:8000 — Execution Plane"]
+    AI["Orchestrix AI\n:8001 — Analysis Plane"]
+    Insights["System Insights API\n:8002 — Telemetry Backend"]
+    IAM["Identity Access Service\n:8003 — Auth & RBAC"]
+
+    Console -- "/api — jobs, workflows, workers" --> Engine
+    Console -- "/ai — incident analysis" --> AI
+    Console -- "/insights — host metrics" --> Insights
+    Console -- "/iam — login, tokens" --> IAM
+
+    AI -- "poll events & jobs" --> Engine
+    AI -- "correlate host metrics" --> Insights
+    Engine -. "validate JWT" .-> IAM
+    AI -. "validate JWT" .-> IAM
+
+    style IAM fill:#ef4444,color:#fff,stroke:#ef4444
+```
 
 ## Why This Project
 
