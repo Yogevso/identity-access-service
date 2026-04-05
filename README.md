@@ -6,6 +6,23 @@ Built with FastAPI, PostgreSQL, SQLAlchemy, Alembic, Docker Compose, and GitHub 
 
 This repository represents a completed milestone of the project: a secure, multi-tenant backend service that covers authentication, authorization, tenant isolation, auditability, operational hardening, and local deployment workflows.
 
+## Part of the Orchestrix Platform
+
+Identity Access Service is the **shared authentication and authorization layer** of the Orchestrix Platform — it issues and validates JWTs used by all platform services for tenant-scoped, role-based access control.
+
+| Service | Role | Interaction |
+|---------|------|-------------|
+| **[Orchestrix Engine](https://github.com/Yogevso/Orchestrix-Engine)** | Execution plane | Validates IAM-issued JWTs to enforce tenant scoping on jobs, workflows, and admin actions |
+| **[Orchestrix Console](https://github.com/Yogevso/orchestrix-console)** | Operator UI | Authenticates operators via IAM login and passes bearer tokens to all platform APIs |
+| **[Orchestrix AI](https://github.com/Yogevso/orchestrix-ai)** | Analysis plane | Validates tokens for tenant-scoped access to privileged analysis endpoints |
+| **[System Insights API](https://github.com/Yogevso/system-insights-api)** | Telemetry backend | Planned JWT validation for protected telemetry queries |
+
+**Data this service provides:**
+- JWT access tokens with claims: `sub`, `role`, `tenant_id`
+- Refresh token rotation for session continuity
+- User profile and tenant context via `GET /api/v1/auth/me`
+- Audit logs for all auth and admin events
+
 ## Why This Project
 
 Identity and access control sit at the center of most modern SaaS systems. Authentication, authorization, tenant isolation, and auditability are not side concerns. They shape how a product enforces trust, protects customer data, and scales safely across organizations.
